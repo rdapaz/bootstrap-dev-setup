@@ -1,0 +1,12 @@
+# Downloaded at bootstrap time, not tracked
+config/wezterm/backgrounds/*.png
+config/wezterm/backgrounds/*.jpg
+config/wezterm/backgrounds/*.jpeg
+config/wezterm/backgrounds/*.webp
+
+# Backups created by the scripts
+*.bak-*
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+# Keep shell scripts LF so they run on macOS/Linux even when authored on Windows
+*.sh    text eol=lf
+# PowerShell is fine with either, but keep it consistent
+*.ps1   text eol=crlf
+# Lua configs: LF
+*.lua   text eol=lf
+*.md    text
