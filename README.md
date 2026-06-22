@@ -145,8 +145,9 @@ See [`docs/setup-spec.md`](docs/setup-spec.md) for the full manual walkthrough.
 
 - [WezTerm](https://wezfurlong.org/wezterm/) · [NvChad](https://nvchad.com/) ·
   [Catppuccin](https://github.com/catppuccin).
-- The repo ships a **pinned** WezTerm background at
-  `config/wezterm/backgrounds/waifu.png`; the scripts install that for a
-  consistent look across machines. If it is missing, they fall back to a random
-  SFW image from [nekos.best](https://nekos.best) (artist-credited art).
-  Replace `waifu.png` with your own to customise.
+- The repo ships **7 pinned** WezTerm backgrounds at
+  `config/wezterm/backgrounds/waifu-*.png`; the scripts install all of them and
+  `wezterm.lua` displays **one at random each launch**. If the folder is empty,
+  the scripts fall back to downloading 7 random SFW images from
+  [nekos.best](https://nekos.best) (artist-credited art). Add or replace images
+  in that folder to customise the rotation.

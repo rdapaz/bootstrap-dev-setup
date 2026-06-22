@@ -50,25 +50,30 @@ function Add-ToolchainsToPath {
 }
 
 function Get-AnimeBackground {
-    param([string]$SourceImage)   # pinned image shipped with the repo (optional)
-    Write-Step "Installing WezTerm background image"
+    param([string]$SourceDir)   # repo folder of pinned images (optional)
+    Write-Step "Installing WezTerm background images"
     $dir = Join-Path $env:USERPROFILE '.config\wezterm\backgrounds'
-    $img = Join-Path $dir 'waifu.png'
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    if (Test-Path $img) { Write-Ok "Background already present"; return }
-    # Prefer the pinned image bundled in the repo for a consistent look
-    if ($SourceImage -and (Test-Path $SourceImage)) {
-        Copy-Item $SourceImage $img -Force
-        Write-Ok "Installed pinned background -> $img"
-        return
+    $existing = @(Get-ChildItem $dir -Include *.png,*.jpg,*.jpeg,*.webp -File -ErrorAction SilentlyContinue)
+    if ($existing.Count -gt 0) { Write-Ok "$($existing.Count) background(s) already present"; return }
+    # Prefer the pinned images bundled in the repo for a consistent look
+    if ($SourceDir -and (Test-Path $SourceDir)) {
+        $imgs = @(Get-ChildItem $SourceDir -Include *.png,*.jpg,*.jpeg,*.webp -File -ErrorAction SilentlyContinue)
+        if ($imgs.Count -gt 0) {
+            $imgs | ForEach-Object { Copy-Item $_.FullName (Join-Path $dir $_.Name) -Force }
+            Write-Ok "Installed $($imgs.Count) pinned background(s) -> $dir"
+            return
+        }
     }
-    # Fallback: download a random SFW anime image
+    # Fallback: download a few random SFW anime images
     try {
-        $api = Invoke-RestMethod -Uri 'https://nekos.best/api/v2/neko' -TimeoutSec 20
-        Invoke-WebRequest -Uri $api.results[0].url -OutFile $img -TimeoutSec 60
-        Write-Ok "Downloaded background -> $img"
+        for ($i = 1; $i -le 7; $i++) {
+            $api = Invoke-RestMethod -Uri 'https://nekos.best/api/v2/neko' -TimeoutSec 20
+            Invoke-WebRequest -Uri $api.results[0].url -OutFile (Join-Path $dir "waifu-$i.png") -TimeoutSec 60
+        }
+        Write-Ok "Downloaded 7 background(s) -> $dir"
     } catch {
-        Write-Warn2 "Could not obtain background ($($_.Exception.Message)). WezTerm runs without one."
+        Write-Warn2 "Could not obtain backgrounds ($($_.Exception.Message)). WezTerm runs without one."
     }
 }
 

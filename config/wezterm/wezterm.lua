@@ -27,29 +27,39 @@ config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" } -- ligatures
 config.window_background_opacity = 0.96
 config.macos_window_background_blur = 20 -- harmless on Windows
 
--- Anime background (right-anchored, dimmed so text stays readable)
-config.background = {
-  -- Base solid color layer (matches Catppuccin Mocha base) behind the image
-  {
-    source = { Color = "#1e1e2e" },
-    width = "100%",
-    height = "100%",
-  },
-  -- The waifu, anchored to the right edge, dimmed down
-  {
-    source = { File = wezterm.home_dir .. "/.config/wezterm/backgrounds/waifu.png" },
-    horizontal_align = "Right",
-    vertical_align = "Middle",
-    repeat_x = "NoRepeat",
-    repeat_y = "NoRepeat",
-    width = "Cover",
-    height = "Cover",
-    opacity = 1.0,
-    hsb = { brightness = 0.12, saturation = 1.0, hue = 1.0 }, -- dim the picture
-  },
-}
--- Keep terminal text crisp over the image
-config.text_background_opacity = 1.0
+-- Anime background: pick a RANDOM image from the backgrounds folder at startup.
+-- Drop any number of .png/.jpg files in ~/.config/wezterm/backgrounds and one is
+-- chosen each time the config loads (i.e. each new WezTerm launch).
+local bg_dir = wezterm.home_dir .. "/.config/wezterm/backgrounds"
+local images = {}
+for _, pat in ipairs({ "/*.png", "/*.jpg", "/*.jpeg", "/*.webp" }) do
+  for _, f in ipairs(wezterm.glob(bg_dir .. pat)) do
+    images[#images + 1] = f
+  end
+end
+
+if #images > 0 then
+  math.randomseed(os.time() + os.clock() * 1000)
+  local pick = images[math.random(#images)]
+  config.background = {
+    -- Base solid color layer (matches Catppuccin Mocha base) behind the image
+    { source = { Color = "#1e1e2e" }, width = "100%", height = "100%" },
+    -- The randomly chosen waifu, anchored right, dimmed for readability
+    {
+      source = { File = pick },
+      horizontal_align = "Right",
+      vertical_align = "Middle",
+      repeat_x = "NoRepeat",
+      repeat_y = "NoRepeat",
+      width = "Cover",
+      height = "Cover",
+      opacity = 1.0,
+      hsb = { brightness = 0.12, saturation = 1.0, hue = 1.0 }, -- dim the picture
+    },
+  }
+  -- Keep terminal text crisp over the image
+  config.text_background_opacity = 1.0
+end
 config.window_decorations = "RESIZE"
 config.window_padding = { left = 12, right = 12, top = 10, bottom = 8 }
 config.initial_cols = 120

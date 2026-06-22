@@ -46,7 +46,7 @@ Copy-Item (Join-Path $ConfigDir 'wezterm\wezterm.lua') $wezDst -Force
 Write-Ok "Wrote $wezDst"
 
 # 3. Background --------------------------------------------------------------
-if (-not $NoBackground) { Get-AnimeBackground (Join-Path $ConfigDir 'wezterm\backgrounds\waifu.png') } else { Write-Step "Skipping background (-NoBackground)" }
+if (-not $NoBackground) { Get-AnimeBackground (Join-Path $ConfigDir 'wezterm\backgrounds') } else { Write-Step "Skipping background (-NoBackground)" }
 
 # 4. Verify ------------------------------------------------------------------
 Write-Step "Verifying"
