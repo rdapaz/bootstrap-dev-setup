@@ -79,18 +79,22 @@ local function pick_background(previous)
   return background_for(file), file
 end
 
+-- Track the current background per window id (NOT inside config overrides --
+-- WezTerm rejects unknown config keys, which would make the override fail).
+local current_bg_by_window = {}
+
 -- Reshuffle the background of the current window (bound to Ctrl+a b).
 wezterm.on("shuffle-background", function(window, _pane)
-  local overrides = window:get_config_overrides() or {}
-  local current = overrides._bg_file
-  local bg, file = pick_background(current)
+  local wid = window:window_id()
+  local bg, file = pick_background(current_bg_by_window[wid])
   if not bg then
     window:toast_notification("WezTerm", "No background images found in\n" .. bg_dir, nil, 4000)
     return
   end
+  current_bg_by_window[wid] = file
+  local overrides = window:get_config_overrides() or {}
   overrides.background = bg
   overrides.text_background_opacity = 1.0
-  overrides._bg_file = file -- stash so the next shuffle can avoid a repeat
   window:set_config_overrides(overrides)
   window:toast_notification("WezTerm", "Background: " .. (file:match("[^/\\]+$") or file), nil, 2000)
 end)
