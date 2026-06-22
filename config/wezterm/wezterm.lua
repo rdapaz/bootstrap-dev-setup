@@ -252,6 +252,9 @@ config.keys = {
   -- Clipboard
   { key = "c", mods = "CTRL|SHIFT", action = act.CopyTo("Clipboard") },
   { key = "v", mods = "CTRL|SHIFT", action = act.PasteFrom("Clipboard") },
+  -- Also allow plain Ctrl+V to paste the system clipboard (text copied from
+  -- other apps/windows), so it isn't limited to the primary selection.
+  { key = "v", mods = "CTRL", action = act.PasteFrom("Clipboard") },
 
   -- Command palette & launcher
   { key = "P", mods = "CTRL|SHIFT", action = act.ActivateCommandPalette },
@@ -263,6 +266,43 @@ config.keys = {
   -- Cheat sheet overlay (stays up until you press a key)
   { key = "F1", action = act.EmitEvent("show-cheatsheet") },
   { key = "?", mods = "LEADER", action = act.EmitEvent("show-cheatsheet") },
+}
+
+--------------------------------------------------------------------------------
+-- Mouse: copy-on-select (highlight with the mouse -> goes to the clipboard)
+--------------------------------------------------------------------------------
+config.mouse_bindings = {
+  -- Finish a left-drag selection: copy to clipboard (and primary selection).
+  {
+    event = { Up = { streak = 1, button = "Left" } },
+    mods = "NONE",
+    action = act.CompleteSelection("ClipboardAndPrimarySelection"),
+  },
+  -- Double-click selects a word and copies it.
+  {
+    event = { Up = { streak = 2, button = "Left" } },
+    mods = "NONE",
+    action = act.CompleteSelection("ClipboardAndPrimarySelection"),
+  },
+  -- Triple-click selects the whole line and copies it.
+  {
+    event = { Up = { streak = 3, button = "Left" } },
+    mods = "NONE",
+    action = act.CompleteSelection("ClipboardAndPrimarySelection"),
+  },
+  -- Keep Ctrl+Click as the "open hyperlink" gesture.
+  {
+    event = { Up = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = act.OpenLinkAtMouseCursor,
+  },
+  -- Middle-click pastes the SYSTEM clipboard (text copied from other apps),
+  -- not just the X11-style primary selection.
+  {
+    event = { Down = { streak = 1, button = "Middle" } },
+    mods = "NONE",
+    action = act.PasteFrom("Clipboard"),
+  },
 }
 
 -- Jump to tab N with LEADER + number
