@@ -27,26 +27,31 @@ config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" } -- ligatures
 config.window_background_opacity = 0.96
 config.macos_window_background_blur = 20 -- harmless on Windows
 
--- Anime background: pick a RANDOM image from the backgrounds folder at startup.
--- Drop any number of .png/.jpg files in ~/.config/wezterm/backgrounds and one is
--- chosen each time the config loads (i.e. each new WezTerm launch).
+-- Anime background: pick a RANDOM image from the backgrounds folder.
+-- One is chosen each time the config loads (every new WezTerm launch), and you
+-- can reshuffle the current window on demand with  Ctrl+a b  (see keys below).
+-- Drop any number of .png/.jpg/.jpeg/.webp files in ~/.config/wezterm/backgrounds.
 local bg_dir = wezterm.home_dir .. "/.config/wezterm/backgrounds"
-local images = {}
-for _, pat in ipairs({ "/*.png", "/*.jpg", "/*.jpeg", "/*.webp" }) do
-  for _, f in ipairs(wezterm.glob(bg_dir .. pat)) do
-    images[#images + 1] = f
+math.randomseed(os.time() + os.clock() * 1000000)
+
+local function list_backgrounds()
+  local images = {}
+  for _, pat in ipairs({ "/*.png", "/*.jpg", "/*.jpeg", "/*.webp" }) do
+    for _, f in ipairs(wezterm.glob(bg_dir .. pat)) do
+      images[#images + 1] = f
+    end
   end
+  return images
 end
 
-if #images > 0 then
-  math.randomseed(os.time() + os.clock() * 1000)
-  local pick = images[math.random(#images)]
-  config.background = {
+-- Build a background layer-stack for a given image file.
+local function background_for(file)
+  return {
     -- Base solid color layer (matches Catppuccin Mocha base) behind the image
     { source = { Color = "#1e1e2e" }, width = "100%", height = "100%" },
-    -- The randomly chosen waifu, anchored right, dimmed for readability
+    -- The chosen waifu, anchored right, dimmed for readability
     {
-      source = { File = pick },
+      source = { File = file },
       horizontal_align = "Right",
       vertical_align = "Middle",
       repeat_x = "NoRepeat",
@@ -57,7 +62,43 @@ if #images > 0 then
       hsb = { brightness = 0.12, saturation = 1.0, hue = 1.0 }, -- dim the picture
     },
   }
-  -- Keep terminal text crisp over the image
+end
+
+-- Pick a random image, optionally avoiding `previous` so a reshuffle changes it.
+local function pick_background(previous)
+  local images = list_backgrounds()
+  if #images == 0 then return nil, nil end
+  local file = images[math.random(#images)]
+  if previous and #images > 1 then
+    local guard = 0
+    while file == previous and guard < 10 do
+      file = images[math.random(#images)]
+      guard = guard + 1
+    end
+  end
+  return background_for(file), file
+end
+
+-- Reshuffle the background of the current window (bound to Ctrl+a b).
+wezterm.on("shuffle-background", function(window, _pane)
+  local overrides = window:get_config_overrides() or {}
+  local current = overrides._bg_file
+  local bg, file = pick_background(current)
+  if not bg then
+    window:toast_notification("WezTerm", "No background images found in\n" .. bg_dir, nil, 4000)
+    return
+  end
+  overrides.background = bg
+  overrides.text_background_opacity = 1.0
+  overrides._bg_file = file -- stash so the next shuffle can avoid a repeat
+  window:set_config_overrides(overrides)
+  window:toast_notification("WezTerm", "Background: " .. (file:match("[^/\\]+$") or file), nil, 2000)
+end)
+
+-- Initial random background at startup.
+local _startup_bg = pick_background(nil)
+if _startup_bg then
+  config.background = _startup_bg
   config.text_background_opacity = 1.0
 end
 config.window_decorations = "RESIZE"
@@ -129,6 +170,7 @@ local cheat_entries = {
   { keys = "Ctrl+a  -",       desc = "Split pane vertically",   action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
   { keys = "Ctrl+a  h/j/k/l", desc = "Move between panes (left/down/up/right)" },
   { keys = "Ctrl+a  z",       desc = "Zoom / unzoom current pane", action = act.TogglePaneZoomState },
+  { keys = "Ctrl+a  b",       desc = "Shuffle to a new random background", action = act.EmitEvent("shuffle-background") },
   { keys = "Ctrl+a  x",       desc = "Close current pane",      action = act.CloseCurrentPane({ confirm = true }) },
   { keys = "Ctrl+a  c",       desc = "New tab",                 action = act.SpawnTab("CurrentPaneDomain") },
   { keys = "Ctrl+a  n / p",   desc = "Next / previous tab" },
@@ -190,6 +232,7 @@ config.keys = {
   { key = "k", mods = "LEADER", action = act.ActivatePaneDirection("Up") },
   { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
   { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
+  { key = "b", mods = "LEADER", action = act.EmitEvent("shuffle-background") },
   { key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 
   -- Tabs
