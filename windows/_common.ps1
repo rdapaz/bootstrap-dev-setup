@@ -50,17 +50,25 @@ function Add-ToolchainsToPath {
 }
 
 function Get-AnimeBackground {
-    Write-Step "Downloading anime background image"
+    param([string]$SourceImage)   # pinned image shipped with the repo (optional)
+    Write-Step "Installing WezTerm background image"
     $dir = Join-Path $env:USERPROFILE '.config\wezterm\backgrounds'
     $img = Join-Path $dir 'waifu.png'
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     if (Test-Path $img) { Write-Ok "Background already present"; return }
+    # Prefer the pinned image bundled in the repo for a consistent look
+    if ($SourceImage -and (Test-Path $SourceImage)) {
+        Copy-Item $SourceImage $img -Force
+        Write-Ok "Installed pinned background -> $img"
+        return
+    }
+    # Fallback: download a random SFW anime image
     try {
         $api = Invoke-RestMethod -Uri 'https://nekos.best/api/v2/neko' -TimeoutSec 20
         Invoke-WebRequest -Uri $api.results[0].url -OutFile $img -TimeoutSec 60
-        Write-Ok "Saved background -> $img"
+        Write-Ok "Downloaded background -> $img"
     } catch {
-        Write-Warn2 "Could not download background ($($_.Exception.Message)). WezTerm runs without one."
+        Write-Warn2 "Could not obtain background ($($_.Exception.Message)). WezTerm runs without one."
     }
 }
 

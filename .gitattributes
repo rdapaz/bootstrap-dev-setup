@@ -5,3 +5,8 @@
 # Lua configs: LF
 *.lua   text eol=lf
 *.md    text
+# Images are binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary

@@ -1,8 +1,10 @@
-# Downloaded at bootstrap time, not tracked
+# Background images downloaded at bootstrap time are not tracked...
 config/wezterm/backgrounds/*.png
 config/wezterm/backgrounds/*.jpg
 config/wezterm/backgrounds/*.jpeg
 config/wezterm/backgrounds/*.webp
+# ...except the pinned default that ships with the repo:
+!config/wezterm/backgrounds/waifu.png
 
 # Backups created by the scripts
 *.bak-*

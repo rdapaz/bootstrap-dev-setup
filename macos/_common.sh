@@ -34,15 +34,21 @@ backup_if_exists() {   # backup_if_exists <path>
   if [ -e "$1" ]; then cp -R "$1" "$1.bak-$TS"; warn "Backed up $1 -> $1.bak-$TS"; fi
 }
 
-get_anime_background() {
-  step "Downloading anime background image"
+get_anime_background() {   # get_anime_background [pinned_source_image]
+  step "Installing WezTerm background image"
+  local src="${1:-}"
   local dir="$HOME/.config/wezterm/backgrounds"
   local img="$dir/waifu.png"
   mkdir -p "$dir"
   if [ -f "$img" ]; then ok "Background already present"; return; fi
+  # Prefer the pinned image bundled in the repo for a consistent look
+  if [ -n "$src" ] && [ -f "$src" ]; then
+    cp "$src" "$img"; ok "Installed pinned background -> $img"; return
+  fi
+  # Fallback: download a random SFW anime image
   local url
   if url="$(curl -fsSL --max-time 20 https://nekos.best/api/v2/neko | python3 -c 'import sys,json; print(json.load(sys.stdin)["results"][0]["url"])' 2>/dev/null)"; then
-    if curl -fsSL --max-time 60 -o "$img" "$url"; then ok "Saved background -> $img"; else warn "Background download failed; WezTerm runs without one."; fi
+    if curl -fsSL --max-time 60 -o "$img" "$url"; then ok "Downloaded background -> $img"; else warn "Background download failed; WezTerm runs without one."; fi
   else
     warn "Could not reach nekos.best; WezTerm runs without a background."
   fi
