@@ -36,7 +36,7 @@ cp "$CONFIG_DIR/wezterm/wezterm.lua" "$WEZ_DST"
 ok "Wrote $WEZ_DST"
 
 # 3. Background --------------------------------------------------------------
-[ "${NO_BACKGROUND:-0}" = "1" ] && step "Skipping background (NO_BACKGROUND=1)" || get_anime_background "$CONFIG_DIR/wezterm/backgrounds"
+[ "${NO_BACKGROUND:-0}" = "1" ] && step "Skipping background (NO_BACKGROUND=1)" || get_anime_background "$CONFIG_DIR/wezterm/backgrounds" "${REFRESH_BACKGROUNDS:-0}"
 
 # 4. Verify ------------------------------------------------------------------
 step "Verifying"

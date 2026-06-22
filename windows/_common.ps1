@@ -49,32 +49,81 @@ function Add-ToolchainsToPath {
     if ($extra) { $env:PATH = ($extra -join ';') + ';' + $env:PATH }
 }
 
-function Get-AnimeBackground {
-    param([string]$SourceDir)   # repo folder of pinned images (optional)
-    Write-Step "Installing WezTerm background images"
+function Get-WezTermBackgroundDir {
     $dir = Join-Path $env:USERPROFILE '.config\wezterm\backgrounds'
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    $existing = @(Get-ChildItem $dir -Include *.png,*.jpg,*.jpeg,*.webp -File -ErrorAction SilentlyContinue)
-    if ($existing.Count -gt 0) { Write-Ok "$($existing.Count) background(s) already present"; return }
+    return $dir
+}
+
+# Robust image lister. NOTE: Get-ChildItem -Include needs -Recurse or a \*
+# path to work, so we filter by extension explicitly instead.
+function Get-ImageFiles {
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path $Path)) { return @() }
+    return @(Get-ChildItem -Path $Path -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in '.png', '.jpg', '.jpeg', '.webp' })
+}
+
+# Touch ~/.wezterm.lua so a RUNNING WezTerm auto-reloads and re-rolls the image.
+function Update-WezTermConfigMtime {
+    $cfg = Join-Path $env:USERPROFILE '.wezterm.lua'
+    if (Test-Path $cfg) {
+        (Get-Item $cfg).LastWriteTime = Get-Date
+        Write-Ok "Touched $cfg (a running WezTerm will reload)"
+    }
+}
+
+# Download N fresh random SFW anime images into the backgrounds folder.
+# nekos.best's Cloudflare allows curl's default UA but 403s spoofed browser UAs
+# AND the default PowerShell UA -- so use curl.exe (default UA), and if it's
+# missing, fall back to Invoke-WebRequest with a curl-style UA.
+function Get-RandomBackgrounds {
+    param([int]$Count = 7)
+    $dir = Get-WezTermBackgroundDir
+    $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+    $useCurl = Test-Path $curl
+    $ok = 0
+    for ($i = 1; $i -le $Count; $i++) {
+        try {
+            if ($useCurl) {
+                $json = & $curl -fsSL --max-time 20 'https://nekos.best/api/v2/neko'
+                $url = ($json | ConvertFrom-Json).results[0].url
+                & $curl -fsSL --max-time 60 -o (Join-Path $dir "waifu-$i.png") $url
+                if ($LASTEXITCODE -ne 0) { throw "curl exit $LASTEXITCODE" }
+            } else {
+                $h = @{ 'User-Agent' = 'curl/8.0' }
+                $api = Invoke-RestMethod -Uri 'https://nekos.best/api/v2/neko' -TimeoutSec 20 -Headers $h
+                Invoke-WebRequest -Uri $api.results[0].url -OutFile (Join-Path $dir "waifu-$i.png") -TimeoutSec 60 -Headers $h
+            }
+            $ok++
+        } catch { Write-Warn2 "image $i failed ($($_.Exception.Message))" }
+    }
+    Write-Ok "Downloaded $ok image(s) -> $dir"
+}
+
+function Get-AnimeBackground {
+    param([string]$SourceDir, [switch]$Force)   # repo folder of pinned images (optional)
+    Write-Step "Installing WezTerm background images"
+    $dir = Get-WezTermBackgroundDir
+    $existing = Get-ImageFiles $dir
+    if ($existing.Count -gt 0) {
+        if (-not $Force) { Write-Ok "$($existing.Count) background(s) already present"; return }
+        $existing | Remove-Item -Force
+        Write-Warn2 "Removed $($existing.Count) existing background(s) (refresh)"
+    }
     # Prefer the pinned images bundled in the repo for a consistent look
     if ($SourceDir -and (Test-Path $SourceDir)) {
-        $imgs = @(Get-ChildItem $SourceDir -Include *.png,*.jpg,*.jpeg,*.webp -File -ErrorAction SilentlyContinue)
+        $imgs = Get-ImageFiles $SourceDir
         if ($imgs.Count -gt 0) {
             $imgs | ForEach-Object { Copy-Item $_.FullName (Join-Path $dir $_.Name) -Force }
             Write-Ok "Installed $($imgs.Count) pinned background(s) -> $dir"
+            Update-WezTermConfigMtime
             return
         }
     }
     # Fallback: download a few random SFW anime images
-    try {
-        for ($i = 1; $i -le 7; $i++) {
-            $api = Invoke-RestMethod -Uri 'https://nekos.best/api/v2/neko' -TimeoutSec 20
-            Invoke-WebRequest -Uri $api.results[0].url -OutFile (Join-Path $dir "waifu-$i.png") -TimeoutSec 60
-        }
-        Write-Ok "Downloaded 7 background(s) -> $dir"
-    } catch {
-        Write-Warn2 "Could not obtain backgrounds ($($_.Exception.Message)). WezTerm runs without one."
-    }
+    Get-RandomBackgrounds -Count 7
+    Update-WezTermConfigMtime
 }
 
 function Copy-NvimConfig {

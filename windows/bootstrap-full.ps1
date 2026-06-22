@@ -16,11 +16,15 @@
 .PARAMETER NoBackground
     Skip downloading the anime background image.
 
+.PARAMETER RefreshBackgrounds
+    Force-replace the background images even if some already exist, and touch
+    ~/.wezterm.lua so a running WezTerm reloads.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\windows\bootstrap-full.ps1
 #>
 [CmdletBinding()]
-param([switch]$SkipInstalls, [switch]$NoBackground)
+param([switch]$SkipInstalls, [switch]$NoBackground, [switch]$RefreshBackgrounds)
 
 $ErrorActionPreference = 'Stop'
 $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -54,7 +58,7 @@ Copy-Item (Join-Path $ConfigDir 'wezterm\wezterm.lua') $wezDst -Force
 Write-Ok "Wrote $wezDst"
 
 # 3. Background --------------------------------------------------------------
-if (-not $NoBackground) { Get-AnimeBackground (Join-Path $ConfigDir 'wezterm\backgrounds') } else { Write-Step "Skipping background (-NoBackground)" }
+if (-not $NoBackground) { Get-AnimeBackground (Join-Path $ConfigDir 'wezterm\backgrounds') -Force:$RefreshBackgrounds } else { Write-Step "Skipping background (-NoBackground)" }
 
 # 4. NvChad ------------------------------------------------------------------
 Write-Step "Installing NvChad"

@@ -34,14 +34,35 @@ backup_if_exists() {   # backup_if_exists <path>
   if [ -e "$1" ]; then cp -R "$1" "$1.bak-$TS"; warn "Backed up $1 -> $1.bak-$TS"; fi
 }
 
-get_anime_background() {   # get_anime_background [pinned_source_dir]
+wezterm_bg_dir() { local d="$HOME/.config/wezterm/backgrounds"; mkdir -p "$d"; printf '%s' "$d"; }
+
+# Touch ~/.wezterm.lua so a RUNNING WezTerm auto-reloads and re-rolls the image.
+touch_wezterm_config() {
+  local cfg="$HOME/.wezterm.lua"
+  if [ -f "$cfg" ]; then touch "$cfg"; ok "Touched $cfg (a running WezTerm will reload)"; fi
+}
+
+# Download N fresh random SFW anime images into the backgrounds folder.
+get_random_backgrounds() {   # get_random_backgrounds [count]
+  local count="${1:-7}" dir got=0 url
+  dir="$(wezterm_bg_dir)"
+  for i in $(seq 1 "$count"); do
+    if url="$(curl -fsSL --max-time 20 https://nekos.best/api/v2/neko | python3 -c 'import sys,json; print(json.load(sys.stdin)["results"][0]["url"])' 2>/dev/null)"; then
+      curl -fsSL --max-time 60 -o "$dir/waifu-$i.png" "$url" && got=$((got+1))
+    fi
+  done
+  if [ "$got" -gt 0 ]; then ok "Downloaded $got image(s) -> $dir"; else warn "Could not download images."; fi
+}
+
+get_anime_background() {   # get_anime_background [pinned_source_dir] [force]
   step "Installing WezTerm background images"
-  local srcdir="${1:-}"
-  local dir="$HOME/.config/wezterm/backgrounds"
-  mkdir -p "$dir"
+  local srcdir="${1:-}" force="${2:-0}"
+  local dir; dir="$(wezterm_bg_dir)"
   # Already populated?
   if ls "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp >/dev/null 2>&1; then
-    ok "background(s) already present"; return
+    if [ "$force" != "1" ]; then ok "background(s) already present"; return; fi
+    rm -f "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp
+    warn "Removed existing background(s) (refresh)"
   fi
   # Prefer the pinned images bundled in the repo for a consistent look
   if [ -n "$srcdir" ] && ls "$srcdir"/*.png "$srcdir"/*.jpg "$srcdir"/*.jpeg "$srcdir"/*.webp >/dev/null 2>&1; then
@@ -49,16 +70,11 @@ get_anime_background() {   # get_anime_background [pinned_source_dir]
     for f in "$srcdir"/*.png "$srcdir"/*.jpg "$srcdir"/*.jpeg "$srcdir"/*.webp; do
       [ -f "$f" ] || continue; cp "$f" "$dir/"; n=$((n+1))
     done
-    ok "Installed $n pinned background(s) -> $dir"; return
+    ok "Installed $n pinned background(s) -> $dir"; touch_wezterm_config; return
   fi
   # Fallback: download a few random SFW anime images
-  local got=0 url
-  for i in $(seq 1 7); do
-    if url="$(curl -fsSL --max-time 20 https://nekos.best/api/v2/neko | python3 -c 'import sys,json; print(json.load(sys.stdin)["results"][0]["url"])' 2>/dev/null)"; then
-      curl -fsSL --max-time 60 -o "$dir/waifu-$i.png" "$url" && got=$((got+1))
-    fi
-  done
-  if [ "$got" -gt 0 ]; then ok "Downloaded $got background(s) -> $dir"; else warn "Could not obtain backgrounds; WezTerm runs without one."; fi
+  get_random_backgrounds 7
+  touch_wezterm_config
 }
 
 copy_nvim_config() {   # copy_nvim_config <config_dir> <nvim_cfg>

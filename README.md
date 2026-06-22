@@ -54,6 +54,24 @@ chmod +x macos/*.sh
 |------|---------|-------|
 | Skip package installs (configs only) | `-SkipInstalls` | `SKIP_INSTALLS=1` |
 | Skip anime background download | `-NoBackground` | `NO_BACKGROUND=1` |
+| Force-replace backgrounds + reload | `-RefreshBackgrounds` | `REFRESH_BACKGROUNDS=1` |
+
+### Refresh backgrounds anytime
+
+Grab a **fresh random set** of images and reload a running WezTerm:
+
+```powershell
+# Windows: replace with 7 fresh images (or -Count N, -KeepExisting to add)
+powershell -ExecutionPolicy Bypass -File .\windows\refresh-backgrounds.ps1
+```
+```bash
+# macOS: replace with 7 fresh images (or pass a count; KEEP_EXISTING=1 to add)
+./macos/refresh-backgrounds.sh        # or: ./macos/refresh-backgrounds.sh 10
+```
+
+Both scripts download into `~/.config/wezterm/backgrounds` and **touch
+`~/.wezterm.lua`** so an already-running WezTerm reloads and re-rolls its image
+(or just press **`Ctrl+a b`** to reshuffle the current window instantly).
 
 Example:
 
