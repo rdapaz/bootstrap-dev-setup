@@ -159,6 +159,82 @@ See [`docs/setup-spec.md`](docs/setup-spec.md) for the full manual walkthrough.
 
 ---
 
+## Optional: LLM integration (add-on)
+
+A self-contained add-on under [`features/llm-integration/`](features/llm-integration/)
+wires a small multi-provider (Anthropic / OpenAI / Google) Python REPL into
+WezTerm. It is **not** part of `bootstrap-full` — install it only when you want
+it, remove it cleanly when you don’t.
+
+- `LEADER + i` opens the REPL in a new tab
+- `LEADER + Shift + I` opens it as a right split
+
+The installer creates a dedicated venv (`~/.venv/wezterm-llm`), installs the
+`anthropic`, `openai`, and `google-generativeai` clients, deploys a sidecar
+Lua module to `~/.config/wezterm/llm-integration.lua`, and adds a single
+marked block to `~/.wezterm.lua` that `require`s it. Both install and
+uninstall are **idempotent** — safe to re-run.
+
+### Install
+
+**Windows (PowerShell):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\features\llm-integration\install.ps1
+```
+
+**macOS / Linux / WSL (bash):**
+
+```bash
+chmod +x features/llm-integration/install.sh
+./features/llm-integration/install.sh
+```
+
+Then set **one** of the following env vars (first match wins, in this order:
+Anthropic → OpenAI → Google):
+
+```powershell
+# Windows (persistent, User scope)
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY","sk-ant-...","User")
+[Environment]::SetEnvironmentVariable("OPENAI_API_KEY","sk-...","User")
+[Environment]::SetEnvironmentVariable("GOOGLE_API_KEY","AIza...","User")
+```
+
+```bash
+# macOS / Linux — add to ~/.zshrc or ~/.bashrc
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+export GOOGLE_API_KEY="AIza..."
+```
+
+Optional overrides: `LLM_PROVIDER=anthropic|openai|google`, `LLM_MODEL=<name>`.
+Restart WezTerm and press `LEADER + i`.
+
+### Uninstall
+
+**Windows:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\features\llm-integration\uninstall.ps1
+# keep the venv: add  -KeepVenv
+```
+
+**macOS / Linux / WSL:**
+
+```bash
+./features/llm-integration/uninstall.sh
+# keep the venv: KEEP_VENV=1 ./features/llm-integration/uninstall.sh
+```
+
+The uninstaller strips only the marked block from `~/.wezterm.lua` (taking a
+timestamped `.bak` first), removes the sidecar, the REPL, and the venv. API
+key env vars are never touched.
+
+See [`features/llm-integration/README.md`](features/llm-integration/README.md)
+for details.
+
+---
+
 ## Credits
 
 - [WezTerm](https://wezfurlong.org/wezterm/) · [NvChad](https://nvchad.com/) ·
