@@ -32,9 +32,11 @@ function Write-Info($msg) { Write-Host "    $msg" -ForegroundColor DarkGray }
 
 # --- 1. Locate Python ---------------------------------------------------------
 Write-Step "Locating Python"
-$python = (Get-Command python -ErrorAction SilentlyContinue) `
-  ?? (Get-Command python3 -ErrorAction SilentlyContinue) `
-  ?? (Get-Command py -ErrorAction SilentlyContinue)
+$python = $null
+foreach ($candidate in @('python', 'python3', 'py')) {
+  $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+  if ($cmd) { $python = $cmd; break }
+}
 if (-not $python) { throw "Python not found in PATH. Install Python 3.9+ first." }
 Write-Info "Using $($python.Source)"
 
