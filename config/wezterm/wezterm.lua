@@ -1,5 +1,5 @@
 -- ~/.wezterm.lua
--- A pimped-up WezTerm config 🚀
+-- A pimped-up WezTerm config ðŸš€
 -- Docs: https://wezfurlong.org/wezterm/config/files.html
 
 local wezterm = require("wezterm")
@@ -44,49 +44,84 @@ local function list_backgrounds()
   return images
 end
 
--- Build a background layer-stack for a given image file.
-local function background_for(file)
+-- Build a background layer-stack for a given image file and mode.
+local function background_for_mode(file, mode)
+  local attachment = "Fixed"
+  if mode == "parallax" then
+    attachment = { Parallax = 0.15 }
+  end
+
   return {
     -- Base solid color layer (matches Catppuccin Mocha base) behind the image
     { source = { Color = "#1e1e2e" }, width = "100%", height = "100%" },
-    -- The chosen waifu, anchored right, dimmed for readability
+    -- The chosen background, anchored right, dimmed for readability, with optional parallax scroll
     {
       source = { File = file },
       horizontal_align = "Right",
       vertical_align = "Middle",
-      repeat_x = "NoRepeat",
-      repeat_y = "NoRepeat",
+      repeat_x = "Mirror",
+      repeat_y = "Mirror",
       width = "Cover",
       height = "Cover",
       opacity = 1.0,
+      attachment = attachment,
       hsb = { brightness = 0.12, saturation = 1.0, hue = 1.0 }, -- dim the picture
     },
   }
 end
 
 -- Pick a random image, optionally avoiding `previous` so a reshuffle changes it.
-local function pick_background(previous)
+local function pick_background(previous, mode)
+  mode = mode or "parallax"
   local images = list_backgrounds()
   if #images == 0 then return nil, nil end
-  local file = images[math.random(#images)]
-  if previous and #images > 1 then
-    local guard = 0
-    while file == previous and guard < 10 do
-      file = images[math.random(#images)]
-      guard = guard + 1
+  
+  -- If we don't have a previous image (i.e., at startup), check if we have the alien spaceship background
+  local file
+  if not previous then
+    for _, img in ipairs(images) do
+      if img:find("alien_spaceship_bg") then
+        file = img
+        break
+      end
     end
   end
-  return background_for(file), file
+  
+  -- If not found or if shuffling, choose a random one
+  if not file then
+    file = images[math.random(#images)]
+    if previous and #images > 1 then
+      local guard = 0
+      while file == previous and guard < 10 do
+        file = images[math.random(#images)]
+        guard = guard + 1
+      end
+    end
+  end
+  return background_for_mode(file, mode), file
 end
 
 -- Track the current background per window id (NOT inside config overrides --
 -- WezTerm rejects unknown config keys, which would make the override fail).
 local current_bg_by_window = {}
 
+-- Helper to inspect current background mode from window overrides.
+local function get_current_mode_from_overrides(window)
+  local overrides = window:get_config_overrides() or {}
+  if overrides.background and overrides.background[2] then
+    local layer = overrides.background[2]
+    if layer.attachment == "Fixed" then
+      return "fixed"
+    end
+  end
+  return "parallax"
+end
+
 -- Reshuffle the background of the current window (bound to Ctrl+a b).
 wezterm.on("shuffle-background", function(window, _pane)
   local wid = window:window_id()
-  local bg, file = pick_background(current_bg_by_window[wid])
+  local current_mode = get_current_mode_from_overrides(window)
+  local bg, file = pick_background(current_bg_by_window[wid], current_mode)
   if not bg then
     window:toast_notification("WezTerm", "No background images found in\n" .. bg_dir, nil, 4000)
     return
@@ -97,6 +132,39 @@ wezterm.on("shuffle-background", function(window, _pane)
   overrides.text_background_opacity = 1.0
   window:set_config_overrides(overrides)
   window:toast_notification("WezTerm", "Background: " .. (file:match("[^/\\]+$") or file), nil, 2000)
+end)
+
+-- Toggle between parallax and fixed background modes (bound to Ctrl+a m).
+wezterm.on("toggle-background-mode", function(window, _pane)
+  local wid = window:window_id()
+  local current_file = current_bg_by_window[wid]
+
+  -- If we don't have a specific file tracked for this window yet, find the startup/default one
+  if not current_file then
+    local _, startup_file = pick_background(nil)
+    current_file = startup_file
+  end
+
+  if not current_file then
+    window:toast_notification("WezTerm", "No background image loaded to configure.", nil, 2000)
+    return
+  end
+
+  -- Determine target mode by toggling the current overrides state
+  local current_mode = get_current_mode_from_overrides(window)
+  local new_mode = "parallax"
+  if current_mode == "parallax" then
+    new_mode = "fixed"
+  end
+
+  -- Update the background for this file in the new mode
+  local bg = background_for_mode(current_file, new_mode)
+  local overrides = window:get_config_overrides() or {}
+  overrides.background = bg
+  overrides.text_background_opacity = 1.0
+  window:set_config_overrides(overrides)
+
+  window:toast_notification("WezTerm", "Background Mode: " .. new_mode:upper(), nil, 2000)
 end)
 
 -- Initial random background at startup.
@@ -175,6 +243,7 @@ local cheat_entries = {
   { keys = "Ctrl+a  h/j/k/l", desc = "Move between panes (left/down/up/right)" },
   { keys = "Ctrl+a  z",       desc = "Zoom / unzoom current pane", action = act.TogglePaneZoomState },
   { keys = "Ctrl+a  b",       desc = "Shuffle to a new random background", action = act.EmitEvent("shuffle-background") },
+  { keys = "Ctrl+a  m",       desc = "Toggle background mode (parallax/fixed)", action = act.EmitEvent("toggle-background-mode") },
   { keys = "Ctrl+a  x",       desc = "Close current pane",      action = act.CloseCurrentPane({ confirm = true }) },
   { keys = "Ctrl+a  c",       desc = "New tab",                 action = act.SpawnTab("CurrentPaneDomain") },
   { keys = "Ctrl+a  n / p",   desc = "Next / previous tab" },
@@ -237,6 +306,7 @@ config.keys = {
   { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
   { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
   { key = "b", mods = "LEADER", action = act.EmitEvent("shuffle-background") },
+  { key = "m", mods = "LEADER", action = act.EmitEvent("toggle-background-mode") },
   { key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 
   -- Tabs
@@ -322,5 +392,5 @@ config.window_close_confirmation = "NeverPrompt"
 config.front_end = "WebGpu" -- smooth GPU rendering
 config.animation_fps = 60
 config.max_fps = 120
-
 return config
+
