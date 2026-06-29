@@ -6,6 +6,7 @@ config/wezterm/backgrounds/*.webp
 # ...except the pinned defaults that ship with the repo:
 !config/wezterm/backgrounds/waifu-*.png
 !config/wezterm/backgrounds/alien_spaceship_bg.jpg
+!config/wezterm/backgrounds/pexels-*.jpg
 
 # Backups created by the scripts
 *.bak-*
