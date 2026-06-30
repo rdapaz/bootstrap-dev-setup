@@ -117,7 +117,52 @@ local function get_current_mode_from_overrides(window)
   return "parallax"
 end
 
--- Reshuffle the background of the current window (bound to Ctrl+a b).
+-- Select a background image from a list (bound to Ctrl+a b).
+local function select_background(window, pane)
+  local images = list_backgrounds()
+  if #images == 0 then
+    window:toast_notification("WezTerm", "No background images found in\n" .. bg_dir, nil, 4000)
+    return
+  end
+
+  local choices = {}
+  for i, f in ipairs(images) do
+    local filename = f:match("[^/\\]+$") or f
+    table.insert(choices, {
+      id = f,
+      label = string.format("%d: %s", i, filename),
+    })
+  end
+
+  window:perform_action(
+    act.InputSelector({
+      title = "  Select Background Image  (Esc to close, Enter to select)",
+      choices = choices,
+      fuzzy = true,
+      fuzzy_description = "Search backgrounds: ",
+      action = wezterm.action_callback(function(win, p, file, _label)
+        if not file then return end -- Esc pressed
+        local wid = win:window_id()
+        current_bg_by_window[wid] = file
+        
+        local current_mode = get_current_mode_from_overrides(win)
+        local bg = background_for_mode(file, current_mode)
+        
+        local overrides = win:get_config_overrides() or {}
+        overrides.background = bg
+        overrides.text_background_opacity = 1.0
+        win:set_config_overrides(overrides)
+        
+        win:toast_notification("WezTerm", "Background: " .. (file:match("[^/\\]+$") or file), nil, 2000)
+      end),
+    }),
+    pane
+  )
+end
+
+wezterm.on("select-background", select_background)
+
+-- Reshuffle the background of the current window (bound to Ctrl+a s).
 wezterm.on("shuffle-background", function(window, _pane)
   local wid = window:window_id()
   local current_mode = get_current_mode_from_overrides(window)
@@ -242,7 +287,8 @@ local cheat_entries = {
   { keys = "Ctrl+a  -",       desc = "Split pane vertically",   action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
   { keys = "Ctrl+a  h/j/k/l", desc = "Move between panes (left/down/up/right)" },
   { keys = "Ctrl+a  z",       desc = "Zoom / unzoom current pane", action = act.TogglePaneZoomState },
-  { keys = "Ctrl+a  b",       desc = "Shuffle to a new random background", action = act.EmitEvent("shuffle-background") },
+  { keys = "Ctrl+a  b",       desc = "Select a background image from TUI menu", action = act.EmitEvent("select-background") },
+  { keys = "Ctrl+a  s",       desc = "Shuffle to a new random background", action = act.EmitEvent("shuffle-background") },
   { keys = "Ctrl+a  m",       desc = "Toggle background mode (parallax/fixed)", action = act.EmitEvent("toggle-background-mode") },
   { keys = "Ctrl+a  x",       desc = "Close current pane",      action = act.CloseCurrentPane({ confirm = true }) },
   { keys = "Ctrl+a  c",       desc = "New tab",                 action = act.SpawnTab("CurrentPaneDomain") },
@@ -305,7 +351,8 @@ config.keys = {
   { key = "k", mods = "LEADER", action = act.ActivatePaneDirection("Up") },
   { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
   { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
-  { key = "b", mods = "LEADER", action = act.EmitEvent("shuffle-background") },
+  { key = "b", mods = "LEADER", action = act.EmitEvent("select-background") },
+  { key = "s", mods = "LEADER", action = act.EmitEvent("shuffle-background") },
   { key = "m", mods = "LEADER", action = act.EmitEvent("toggle-background-mode") },
   { key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 
