@@ -60,7 +60,7 @@ local function background_for_mode(file, mode)
       horizontal_align = "Right",
       vertical_align = "Middle",
       repeat_x = "Mirror",
-      repeat_y = "Mirror",
+      repeat_y = "NoRepeat",
       width = "Cover",
       height = "Cover",
       opacity = 1.0,
