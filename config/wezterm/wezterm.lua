@@ -218,7 +218,7 @@ if _startup_bg then
   config.background = _startup_bg
   config.text_background_opacity = 1.0
 end
-config.window_decorations = "RESIZE"
+config.window_decorations = "INTEGRATED_BUTTONS | RESIZE"
 config.window_padding = { left = 12, right = 12, top = 10, bottom = 8 }
 config.initial_cols = 120
 config.initial_rows = 32
