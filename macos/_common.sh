@@ -36,6 +36,17 @@ backup_if_exists() {   # backup_if_exists <path>
 
 wezterm_bg_dir() { local d="$HOME/.config/wezterm/backgrounds"; mkdir -p "$d"; printf '%s' "$d"; }
 
+# True if the directory contains at least one image. NOTE: don't test this with
+# a single `ls dir/*.png dir/*.jpg ...` -- ls exits non-zero when ANY glob has
+# no match, even if the others do.
+has_images() {   # has_images <dir>
+  local f
+  for f in "$1"/*.png "$1"/*.jpg "$1"/*.jpeg "$1"/*.webp; do
+    [ -f "$f" ] && return 0
+  done
+  return 1
+}
+
 # Touch ~/.wezterm.lua so a RUNNING WezTerm auto-reloads and re-rolls the image.
 touch_wezterm_config() {
   local cfg="$HOME/.wezterm.lua"
@@ -56,23 +67,28 @@ get_random_backgrounds() {   # get_random_backgrounds [count]
 
 get_anime_background() {   # get_anime_background [pinned_source_dir] [force]
   step "Installing WezTerm background images"
-  local srcdir="${1:-}" force="${2:-0}"
+  local srcdir="${1:-}" force="${2:-0}" dst n=0
   local dir; dir="$(wezterm_bg_dir)"
-  # Already populated?
-  if ls "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp >/dev/null 2>&1; then
-    if [ "$force" != "1" ]; then ok "background(s) already present"; return; fi
-    rm -f "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp
+  if [ "$force" = "1" ]; then
+    rm -f "$dir"/*.png "$dir"/*.jpg "$dir"/*.jpeg "$dir"/*.webp 2>/dev/null || true
     warn "Removed existing background(s) (refresh)"
   fi
-  # Prefer the pinned images bundled in the repo for a consistent look
-  if [ -n "$srcdir" ] && ls "$srcdir"/*.png "$srcdir"/*.jpg "$srcdir"/*.jpeg "$srcdir"/*.webp >/dev/null 2>&1; then
-    local n=0
+  # Prefer the pinned images bundled in the repo: sync any that are missing or
+  # changed, leaving extra user-added images alone.
+  if [ -n "$srcdir" ] && has_images "$srcdir"; then
     for f in "$srcdir"/*.png "$srcdir"/*.jpg "$srcdir"/*.jpeg "$srcdir"/*.webp; do
-      [ -f "$f" ] || continue; cp "$f" "$dir/"; n=$((n+1))
+      [ -f "$f" ] || continue
+      dst="$dir/$(basename "$f")"
+      if [ ! -f "$dst" ] || ! cmp -s "$f" "$dst"; then cp "$f" "$dst"; n=$((n+1)); fi
     done
-    ok "Installed $n pinned background(s) -> $dir"; touch_wezterm_config; return
+    if [ "$n" -gt 0 ]; then ok "Synced $n pinned background(s) -> $dir"; touch_wezterm_config
+    else ok "Pinned backgrounds already up to date"; fi
+    return
   fi
-  # Fallback: download a few random SFW anime images
+  # No pinned images in the repo: keep whatever is there, or download a random set
+  if has_images "$dir"; then
+    ok "background(s) already present"; return
+  fi
   get_random_backgrounds 7
   touch_wezterm_config
 }

@@ -105,23 +105,34 @@ function Get-AnimeBackground {
     param([string]$SourceDir, [switch]$Force)   # repo folder of pinned images (optional)
     Write-Step "Installing WezTerm background images"
     $dir = Get-WezTermBackgroundDir
-    $existing = Get-ImageFiles $dir
-    if ($existing.Count -gt 0) {
-        if (-not $Force) { Write-Ok "$($existing.Count) background(s) already present"; return }
-        $existing | Remove-Item -Force
-        Write-Warn2 "Removed $($existing.Count) existing background(s) (refresh)"
+    if ($Force) {
+        $existing = Get-ImageFiles $dir
+        if ($existing.Count -gt 0) {
+            $existing | Remove-Item -Force
+            Write-Warn2 "Removed $($existing.Count) existing background(s) (refresh)"
+        }
     }
-    # Prefer the pinned images bundled in the repo for a consistent look
+    # Prefer the pinned images bundled in the repo: sync any that are missing or
+    # changed, leaving extra user-added images alone.
     if ($SourceDir -and (Test-Path $SourceDir)) {
         $imgs = Get-ImageFiles $SourceDir
         if ($imgs.Count -gt 0) {
-            $imgs | ForEach-Object { Copy-Item $_.FullName (Join-Path $dir $_.Name) -Force }
-            Write-Ok "Installed $($imgs.Count) pinned background(s) -> $dir"
-            Update-WezTermConfigMtime
+            $n = 0
+            foreach ($img in $imgs) {
+                $dst = Join-Path $dir $img.Name
+                if (-not (Test-Path $dst) -or
+                    (Get-FileHash $dst).Hash -ne (Get-FileHash $img.FullName).Hash) {
+                    Copy-Item $img.FullName $dst -Force
+                    $n++
+                }
+            }
+            if ($n -gt 0) { Write-Ok "Synced $n pinned background(s) -> $dir"; Update-WezTermConfigMtime }
+            else { Write-Ok "Pinned backgrounds already up to date" }
             return
         }
     }
-    # Fallback: download a few random SFW anime images
+    # No pinned images in the repo: keep whatever is there, or download a random set
+    if ((Get-ImageFiles $dir).Count -gt 0) { Write-Ok "background(s) already present"; return }
     Get-RandomBackgrounds -Count 7
     Update-WezTermConfigMtime
 }
