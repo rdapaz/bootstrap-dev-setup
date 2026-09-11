@@ -71,7 +71,8 @@ powershell -ExecutionPolicy Bypass -File .\windows\refresh-backgrounds.ps1
 
 Both scripts download into `~/.config/wezterm/backgrounds` and **touch
 `~/.wezterm.lua`** so an already-running WezTerm reloads and re-rolls its image
-(or just press **`Ctrl+a b`** to reshuffle the current window instantly).
+(or just press **`Ctrl+a s`** to reshuffle the current window instantly,
+or **`Ctrl+a b`** to pick a specific image).
 
 Example:
 
@@ -149,7 +150,14 @@ overwritten, so the scripts are safe to re-run.
 
 **WezTerm** (leader = `Ctrl+a`): press **`F1`** or **`Ctrl+a ?`** in the terminal
 for a searchable overlay. Highlights: `\`/`-` split, `h/j/k/l` move panes,
-`c`/`n`/`p`/`1-9` tabs, `Ctrl+Shift+P` palette.
+`c`/`n`/`p`/`1-9` tabs, `b`/`s`/`m` background pick/shuffle/mode,
+`f` text colour, `Ctrl+Shift+P` palette.
+
+**Text colour** (`Ctrl+a f`): pick green, yellow, orange, red, cyan, purple,
+white or grey for the default text and cursor. Catppuccin Mocha shades, so
+they match the tab bar. The choice applies to the current window and resets
+on restart; the permanent default is `config.colors` at the top of
+`config/wezterm/wezterm.lua`.
 
 **Neovim / NvChad** (leader = `Space`): `Space th` themes, `Space ff` find files,
 `Space fw` grep, `Ctrl+n` file tree, `Space ch` cheatsheet, `K`/`gd`/`gr`
