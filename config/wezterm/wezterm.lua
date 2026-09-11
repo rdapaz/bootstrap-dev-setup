@@ -11,6 +11,14 @@ local config = wezterm.config_builder()
 --------------------------------------------------------------------------------
 config.color_scheme = "Catppuccin Mocha" -- try: "Tokyo Night", "Dracula", "Nord"
 
+-- Default text + cursor colour (Catppuccin Mocha green). Change at runtime with Ctrl+a f.
+config.colors = {
+  foreground = "#a6e3a1",
+  cursor_bg = "#a6e3a1",
+  cursor_border = "#a6e3a1",
+  cursor_fg = "#1e1e2e",
+}
+
 -- Font: falls back through this list to whatever you have installed.
 config.font = wezterm.font_with_fallback({
   "Comic Code Ligatures",
@@ -19,7 +27,7 @@ config.font = wezterm.font_with_fallback({
   "Cascadia Code",
   "Consolas",
 })
-config.font_size = 11.0
+config.font_size = wezterm.target_triple:find("darwin") and 13.0 or 11.0
 config.line_height = 1.05
 config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" } -- ligatures
 
@@ -162,6 +170,62 @@ end
 
 wezterm.on("select-background", select_background)
 
+--------------------------------------------------------------------------------
+-- Text colour picker (bound to Ctrl+a f)
+--   Changes the default text colour and the cursor for the CURRENT window only.
+--   The permanent default lives in config.colors above.
+--------------------------------------------------------------------------------
+local text_colours = {
+  { id = "green",  label = "Green",  hex = "#a6e3a1" },
+  { id = "yellow", label = "Yellow", hex = "#f9e2af" },
+  { id = "orange", label = "Orange", hex = "#fab387" },
+  { id = "red",    label = "Red",    hex = "#f38ba8" },
+  { id = "cyan",   label = "Cyan",   hex = "#94e2d5" },
+  { id = "purple", label = "Purple", hex = "#cba6f7" },
+  { id = "white",  label = "White",  hex = "#cdd6f4" },
+  { id = "grey",   label = "Grey",   hex = "#9399b2" },
+}
+
+local function apply_text_colour(win, hex)
+  local overrides = win:get_config_overrides() or {}
+  overrides.colors = {
+    foreground = hex,
+    cursor_bg = hex,
+    cursor_border = hex,
+    cursor_fg = "#1e1e2e",
+  }
+  win:set_config_overrides(overrides)
+end
+
+local function select_text_colour(window, pane)
+  local choices = {}
+  for _, c in ipairs(text_colours) do
+    table.insert(choices, {
+      id = c.hex,
+      label = wezterm.format({
+        { Foreground = { Color = c.hex } }, { Text = "  " .. c.label .. "  " .. c.hex },
+      }),
+    })
+  end
+
+  window:perform_action(
+    act.InputSelector({
+      title = "  Select Text Colour  (Esc to close, Enter to select)",
+      choices = choices,
+      fuzzy = true,
+      fuzzy_description = "Search colours: ",
+      action = wezterm.action_callback(function(win, _p, hex, _label)
+        if not hex then return end -- Esc pressed
+        apply_text_colour(win, hex)
+        win:toast_notification("WezTerm", "Text colour: " .. hex, nil, 2000)
+      end),
+    }),
+    pane
+  )
+end
+
+wezterm.on("select-text-colour", select_text_colour)
+
 -- Reshuffle the background of the current window (bound to Ctrl+a s).
 wezterm.on("shuffle-background", function(window, _pane)
   local wid = window:window_id()
@@ -288,6 +352,7 @@ local cheat_entries = {
   { keys = "Ctrl+a  h/j/k/l", desc = "Move between panes (left/down/up/right)" },
   { keys = "Ctrl+a  z",       desc = "Zoom / unzoom current pane", action = act.TogglePaneZoomState },
   { keys = "Ctrl+a  b",       desc = "Select a background image from TUI menu", action = act.EmitEvent("select-background") },
+  { keys = "Ctrl+a  f",       desc = "Select text / cursor colour",         action = act.EmitEvent("select-text-colour") },
   { keys = "Ctrl+a  s",       desc = "Shuffle to a new random background", action = act.EmitEvent("shuffle-background") },
   { keys = "Ctrl+a  m",       desc = "Toggle background mode (parallax/fixed)", action = act.EmitEvent("toggle-background-mode") },
   { keys = "Ctrl+a  x",       desc = "Close current pane",      action = act.CloseCurrentPane({ confirm = true }) },
@@ -352,6 +417,7 @@ config.keys = {
   { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
   { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
   { key = "b", mods = "LEADER", action = act.EmitEvent("select-background") },
+  { key = "f", mods = "LEADER", action = act.EmitEvent("select-text-colour") },
   { key = "s", mods = "LEADER", action = act.EmitEvent("shuffle-background") },
   { key = "m", mods = "LEADER", action = act.EmitEvent("toggle-background-mode") },
   { key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },

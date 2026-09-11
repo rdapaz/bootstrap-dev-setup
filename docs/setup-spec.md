@@ -154,6 +154,8 @@ Leader = **`Ctrl+a`**. Highlights:
 - `Ctrl+a h/j/k/l` — move between panes
 - `Ctrl+a z` zoom, `Ctrl+a x` close pane
 - `Ctrl+a c` new tab, `n`/`p` next/prev, `1-9` jump to tab
+- `Ctrl+a b` pick background image, `Ctrl+a s` shuffle, `Ctrl+a m` parallax/fixed
+- `Ctrl+a f` pick text + cursor colour (green, yellow, orange, red, cyan, purple, white, grey; per-window, default in `config.colors`)
 - `Ctrl+= / - / 0` — font size up/down/reset
 - `Ctrl+Shift+C/V` copy/paste, `Ctrl+Shift+P` command palette, `Ctrl+Shift+F` search
 
